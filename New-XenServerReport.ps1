@@ -7,8 +7,7 @@
 .EXAMPLE
    New-XenServerReport -PoolMasterIP "10.10.10.10","10.10.10.20" -UserName "" -Password ""
 #>
-Function New-XenServerReport {
-    [CmdletBinding()]
+   [CmdletBinding()]
     Param
     (
         # Param1 help description
@@ -135,5 +134,3 @@ Function New-XenServerReport {
     End{
         
     }
-}
-New-XenServerReport -PoolMasterIP "10.10.10.10" -UserName "user" -Password "password" -ReportFormat html
