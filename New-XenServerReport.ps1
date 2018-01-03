@@ -53,23 +53,24 @@
                 [xml]$xml = (new-object System.Net.WebClient).DownloadString($url)
                 
                 $AvailablePatches = $xml.patchdata.patches.patch | where {$_.'#comment' -like "*$XSVersion*"} | Sort-Object name-label
-                
-                $AvailablePatchesInfo = @()
-                foreach ($AvailablePatch in $AvailablePatches) {
-                    $AvailablePatchesNames = New-Object psobject
-                    $AvailablePatchesNames | Add-Member -MemberType NoteProperty -Name "Hotfix" -Value $AvailablePatch.'name-label'
-                    $AvailablePatchesInfo += $AvailablePatchesNames
-                }
-                $InstalledPatchesInfo = @()
-                foreach ($InstalledPatch in $InstalledPatches) {
-                    $InstalledPatchesNames = New-Object psobject
-                    $InstalledPatchesNames | Add-Member -MemberType NoteProperty -Name "Hotfix" -Value $InstalledPatch.'name_label'
-                    $InstalledPatchesInfo += $InstalledPatchesNames
-                }
-            
+                If ($AvailablePatches.count -eq 0) {
+                    $AvailablePatchesInfo = "No patches available"
+                } else {
+                    $AvailablePatchesInfo = @()
+                    foreach ($AvailablePatch in $AvailablePatches) {
+                        $AvailablePatchesNames = New-Object psobject
+                        $AvailablePatchesNames | Add-Member -MemberType NoteProperty -Name "Hotfix" -Value $AvailablePatch.'name-label'
+                        $AvailablePatchesInfo += $AvailablePatchesNames
+                    }
+                    $InstalledPatchesInfo = @()
+                    foreach ($InstalledPatch in $InstalledPatches) {
+                        $InstalledPatchesNames = New-Object psobject
+                        $InstalledPatchesNames | Add-Member -MemberType NoteProperty -Name "Hotfix" -Value $InstalledPatch.'name_label'
+                        $InstalledPatchesInfo += $InstalledPatchesNames
+                    }
+                }           
                 $Compare = Compare-Object $AvailablePatchesInfo $InstalledPatchesInfo -Property hotfix 
                 $Compare = $Compare | where {$_.sideindicator -like "<="}
-                
                 $Xenhosts = Get-XenHost | Sort-Object name_label
                 foreach ($XenHost in $XenHosts) {
                     $XSManagementIPResult += Get-XenHost $XenHost
