@@ -69,7 +69,7 @@
             
                 $Compare = Compare-Object $AvailablePatchesInfo $InstalledPatchesInfo -Property hotfix 
                 $Compare = $Compare | where {$_.sideindicator -like "<="}
-
+                
                 $Xenhosts = Get-XenHost | Sort-Object name_label
                 foreach ($XenHost in $XenHosts) {
                     $XSManagementIPResult += Get-XenHost $XenHost
@@ -105,6 +105,35 @@
                 
                 $MultiPathInfo +=  $MultipathStatus 
                 }
+                $XenBondMasters = (Get-Xenbond).master | Sort-Object opaque_ref
+                $NICStatusInfo = @()
+                foreach ($XenBondMaster in $XenBondMasters) {
+                    $XenPif = Get-XenPIF -opaque_ref $XenBondMaster
+                    $BondName = $XenPif.device 
+                    $XenHost = (Get-XenPIF -opaque_ref $XenBondMaster).host
+                    $XenHostName = (Get-XenHost -opaque_ref $XenHost).hostname
+                    $XenPIFMasterOf = (Get-XenPIF -opaque_ref $XenBondMaster).bond_master_of
+                    $Slaves = (Get-XenBond -opaque_ref ($XenPIFMasterOf).opaque_ref).slaves
+                    Foreach ($Slave in $Slaves)  {
+                        $SlavePif = Get-XenPif -opaque_ref $Slave.opaque_ref
+                        $Metrics = ($SlavePif).metrics
+                        $LinkSpeed = (Get-XenPIFMetrics -opaque_ref $Metrics.opaque_ref).speed
+                        If ($LinkSpeed -gt 0) {
+                            $LinkState = "Up"
+                        } else {
+                            $LinkState = "Down"
+                        }
+                        $Device = $SlavePif.device
+                        $MAC = $SlavePif.MAC
+                        $NICStatus = New-Object psobject
+                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Host name" -Value $XenHostName
+                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Bond name" -Value $BondName
+                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Device name" -Value $Device
+                        $NICStatus | Add-Member -MemberType NoteProperty -Name "MAC address" -Value $MAC
+                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Link state" -Value $LinkState
+                        $NICStatusInfo +=  $NICStatus
+                    }
+                }
                 Paragraph "Xenserver pool information" -Style Heading2
                 Paragraph "Xenserver pool name: $XenPoolName"
                 Paragraph "XenServer version: $XSVersion" 
@@ -114,12 +143,18 @@
                 Paragraph "Available patches" -Style Heading2
                 $AvailablePatches | Table -Columns 'name-label','name-description' -Width 75
                 Paragraph "Missing patches" -Style Heading2
-                $Compare | Table -Columns Hotfix -Width 25
+                If (($Compare).length -eq 0) {
+                    Paragraph "XenServer is up to date" -Style Normal
+                } else {
+                    $Compare | Table -Columns Hotfix -Width 25                
+                }
                 Paragraph "Xenserver host overview" -Style Heading2    
                 $XSManagementIPResult | Table -Columns 'name_label','address','edition' -Headers 'Hostname','Management IP','License edition' -width 75
                 Paragraph "VLANs present in pool" -Style Heading2
                 $VLANResult | Table -Columns 'name_label','name_description','bridge' -Headers 'Name','Description','Bridge' -width 75
-                Paragraph "Xenserver shared storage" -Style Heading2 
+                Paragraph "Network information" -Style Heading2
+                $NICStatusInfo | Sort-Object "Host name", "Device name" | Table -Width 75
+                Paragraph "Xenserver shared storage" -Style Heading2
                 $LUNResult | Table -Columns 'name_label','physical_size','physical_utilisation','shared','virtual_allocation','type' -Width 75
                 Paragraph "Xenserver shared storage extra information" -Style Heading3     
                 $StorageInfo | Table -Width 75
