@@ -5,7 +5,7 @@
    Generate XenServer documentation report. This script requires PSCribo module which can be downloaded here: https://github.com/iainbrighton/PScribo
    The report can be set for word format or HTML format and the standard placement will be on the desktop.
 .EXAMPLE
-   New-XenServerReport -PoolMasterIP "10.10.10.10","10.10.10.20" -UserName "" -Password ""
+   New-XenServerReport -PoolMasterIP "10.10.10.10","10.10.10.20" -UserName "" -Password "" -ReportPath "C:\Reports"
 #>
    [CmdletBinding()]
     Param
@@ -20,7 +20,8 @@
 
         # Param2 help description
         [string]$UserName,
-        [string]$Password
+        [string]$Password,
+        [string]$ReportPath
     )
     Begin{
         Import-Module PScribo -Force
@@ -165,7 +166,7 @@
                 Disconnect-XenServer
             }
         }
-        $XenServerReport | Export-Document -Format $ReportFormat  -Path ~\Desktop     
+        $XenServerReport | Export-Document -Format $ReportFormat  -Path $ReportPath    
     }
     End{
         
@@ -174,8 +175,8 @@
 # SIG # Begin signature block
 # MIINFAYJKoZIhvcNAQcCoIINBTCCDQECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsDc3Id5llKTS9ZonsoGTTing
-# 2p6gggpWMIIFHjCCBAagAwIBAgIQDXS9akkSjo7r759FxeBS1zANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPlnUWLElfsniLeLQKMgfASLV
+# KI2gggpWMIIFHjCCBAagAwIBAgIQDXS9akkSjo7r759FxeBS1zANBgkqhkiG9w0B
 # AQsFADByMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYD
 # VQQLExB3d3cuZGlnaWNlcnQuY29tMTEwLwYDVQQDEyhEaWdpQ2VydCBTSEEyIEFz
 # c3VyZWQgSUQgQ29kZSBTaWduaW5nIENBMB4XDTE4MDIwNTAwMDAwMFoXDTE5MDIx
@@ -235,11 +236,11 @@
 # A1UEAxMoRGlnaUNlcnQgU0hBMiBBc3N1cmVkIElEIENvZGUgU2lnbmluZyBDQQIQ
 # DXS9akkSjo7r759FxeBS1zAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAig
 # AoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgEL
-# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUBKqpaVfCK8Nw42R3PDko
-# TS1/yq4wDQYJKoZIhvcNAQEBBQAEggEAedWxNxT9lTeemxEiZhIXLj2OhY6XZRhs
-# TNfeWjPiYX9aUlsUEfy5/Qp8A3l3Z9j9rQhzSFaJAL7eZZTaARQjeMy5DKtVhB70
-# V5We0rEEizUAg+lSZgcPRU/L8vPSgi1/MfAkgnPLVQDX6sug1E3dKv0WbkaPzq9N
-# MRPESdhp+EgAnYK6TYRTkJL7eSCLWAIaMLdbG8T3TpnKquB1FbRbfSQBI47G78Qb
-# KKbPa4TO0QqBkm7on8UGjh7XgdxznQsI3D45LgCNqg/v9khvCXIWXsj8F8/3NVO9
-# 9jzaabBGfc1hFZETJkN/MBKJdO4oSoCmsUbJCFaQpVumc/cmf2Tdrg==
+# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUGlQFC4H71WmgNUtNOrDH
+# TTGwsMcwDQYJKoZIhvcNAQEBBQAEggEAdYyASnVd3oWqVFGi6HpXj0MmRa53RGuK
+# PwyXAs4Ej9N6z81QrwHFcvpaLzG6K7qMLRMbNv/TnhLVwQq19KMkacCWZI7csgWS
+# yTXJTXBZOTBQegAMWNx7VaBCJl6kH+EkSPpWJPgDD9oyh9pOfToW92sSKeauGFSd
+# I78OCFdbSUwjG9wRknGKHajL0OVTG8aqeeCfTJ3ghhzWs7wbd4MhUB+steneYTAu
+# 0BT4I1TJjJz5Texe248IlxDC7d/tGmuDmTapuM3uFBQabsEzEf861igUeneOACaH
+# dMEjl7fdu3pEkiY0itLmwWOcDBbwcjx6qgbcJzmUx7zNyb5d6+94OA==
 # SIG # End signature block
