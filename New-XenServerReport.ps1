@@ -108,32 +108,37 @@
                 $MultiPathInfo +=  $MultipathStatus 
                 }
                 $XenBondMasters = (Get-Xenbond).master | Sort-Object opaque_ref
-                $NICStatusInfo = @()
-                foreach ($XenBondMaster in $XenBondMasters) {
-                    $XenPif = Get-XenPIF -opaque_ref $XenBondMaster
-                    $BondName = $XenPif.device 
-                    $XenHost = (Get-XenPIF -opaque_ref $XenBondMaster).host
-                    $XenHostName = (Get-XenHost -opaque_ref $XenHost).hostname
-                    $XenPIFMasterOf = (Get-XenPIF -opaque_ref $XenBondMaster).bond_master_of
-                    $Slaves = (Get-XenBond -opaque_ref ($XenPIFMasterOf).opaque_ref).slaves
-                    Foreach ($Slave in $Slaves)  {
-                        $SlavePif = Get-XenPif -opaque_ref $Slave.opaque_ref
-                        $Metrics = ($SlavePif).metrics
-                        $LinkSpeed = (Get-XenPIFMetrics -opaque_ref $Metrics.opaque_ref).speed
-                        If ($LinkSpeed -gt 0) {
-                            $LinkState = "Up"
-                        } else {
-                            $LinkState = "Down"
+                If (($XenBondMasters.opaque_ref).Length -eq 0) {
+                    $NICStatusInfo = "No network bond configured"
+
+                } else {
+                    $NICStatusInfo = @()
+                    foreach ($XenBondMaster in $XenBondMasters) {
+                        $XenPif = Get-XenPIF -opaque_ref $XenBondMaster
+                        $BondName = $XenPif.device 
+                        $XenHost = (Get-XenPIF -opaque_ref $XenBondMaster).host
+                        $XenHostName = (Get-XenHost -opaque_ref $XenHost).hostname
+                        $XenPIFMasterOf = (Get-XenPIF -opaque_ref $XenBondMaster).bond_master_of
+                        $Slaves = (Get-XenBond -opaque_ref ($XenPIFMasterOf).opaque_ref).slaves
+                        Foreach ($Slave in $Slaves)  {
+                            $SlavePif = Get-XenPif -opaque_ref $Slave.opaque_ref
+                            $Metrics = ($SlavePif).metrics
+                            $LinkSpeed = (Get-XenPIFMetrics -opaque_ref $Metrics.opaque_ref).speed
+                            If ($LinkSpeed -gt 0) {
+                                $LinkState = "Up"
+                            } else {
+                                $LinkState = "Down"
+                            }
+                            $Device = $SlavePif.device
+                            $MAC = $SlavePif.MAC
+                            $NICStatus = New-Object psobject
+                            $NICStatus | Add-Member -MemberType NoteProperty -Name "Host name" -Value $XenHostName
+                            $NICStatus | Add-Member -MemberType NoteProperty -Name "Bond name" -Value $BondName
+                            $NICStatus | Add-Member -MemberType NoteProperty -Name "Device name" -Value $Device
+                            $NICStatus | Add-Member -MemberType NoteProperty -Name "MAC address" -Value $MAC
+                            $NICStatus | Add-Member -MemberType NoteProperty -Name "Link state" -Value $LinkState
+                            $NICStatusInfo +=  $NICStatus
                         }
-                        $Device = $SlavePif.device
-                        $MAC = $SlavePif.MAC
-                        $NICStatus = New-Object psobject
-                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Host name" -Value $XenHostName
-                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Bond name" -Value $BondName
-                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Device name" -Value $Device
-                        $NICStatus | Add-Member -MemberType NoteProperty -Name "MAC address" -Value $MAC
-                        $NICStatus | Add-Member -MemberType NoteProperty -Name "Link state" -Value $LinkState
-                        $NICStatusInfo +=  $NICStatus
                     }
                 }
                 Paragraph "Xenserver pool information" -Style Heading2
@@ -155,7 +160,11 @@
                 Paragraph "VLANs present in pool" -Style Heading2
                 $VLANResult | Table -Columns 'name_label','name_description','bridge' -Headers 'Name','Description','Bridge' -width 75
                 Paragraph "Network information" -Style Heading2
-                $NICStatusInfo | Sort-Object "Host name", "Device name" | Table -Width 75
+                If ($NICStatusInfo -like "No network bond configured") {
+                    Paragraph "No network bond configured"
+                } else {
+                    $NICStatusInfo | Sort-Object "Host name", "Device name" | Table -Width 75
+                }
                 Paragraph "Xenserver shared storage" -Style Heading2
                 $LUNResult | Table -Columns 'name_label','physical_size','physical_utilisation','shared','virtual_allocation','type' -Width 75
                 Paragraph "Xenserver shared storage extra information" -Style Heading3     
@@ -175,21 +184,21 @@
 # SIG # Begin signature block
 # MIINFAYJKoZIhvcNAQcCoIINBTCCDQECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPlnUWLElfsniLeLQKMgfASLV
-# KI2gggpWMIIFHjCCBAagAwIBAgIQDXS9akkSjo7r759FxeBS1zANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXqI0/s3+NyY9sRh9pDBpSqU1
+# BfGgggpWMIIFHjCCBAagAwIBAgIQDlKAkCblwyuuo05VV2HtmjANBgkqhkiG9w0B
 # AQsFADByMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYD
 # VQQLExB3d3cuZGlnaWNlcnQuY29tMTEwLwYDVQQDEyhEaWdpQ2VydCBTSEEyIEFz
-# c3VyZWQgSUQgQ29kZSBTaWduaW5nIENBMB4XDTE4MDIwNTAwMDAwMFoXDTE5MDIx
+# c3VyZWQgSUQgQ29kZSBTaWduaW5nIENBMB4XDTE4MDMyNTAwMDAwMFoXDTE5MDIx
 # MzEyMDAwMFowWzELMAkGA1UEBhMCREsxFDASBgNVBAcTC1NrYW5kZXJib3JnMRow
 # GAYDVQQKExFNYXJ0aW4gVGhlcmtlbHNlbjEaMBgGA1UEAxMRTWFydGluIFRoZXJr
-# ZWxzZW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCitzrGHQMHiYmK
-# nIJg1k6GY+RVIB88GbrFRXCHdZYZeBjuLVpMUNxAFAo4fivAjOIXp9gdqORaoWSO
-# Rqs4GqttuqViM0cpGVI8hoVw5yfAxwWk9bX9/e8P5yzV3rUJF3wVHkO80oSWeOTW
-# geIvABuyRsoA6lQUs+WTEw1BgR6X1d5dLN9mJjhTWUqB41lBliGE204IbhHrvfsS
-# czfKaXovg+MnKK51cnkqav+mdUsS0IyDE/18WlOMroIi8NpmJcyZp1ejCv78SEcM
-# PWJ7LJE9VX/iUpjMWZt1XY1XM3Hxcs6yF8A26gUzkKzMUG7kEOHuilMHh/Wh+c16
-# jNvz0//hAgMBAAGjggHFMIIBwTAfBgNVHSMEGDAWgBRaxLl7KgqjpepxA8Bg+S32
-# ZXUOWDAdBgNVHQ4EFgQUfF54GE6E0FN6g8hk8fic5PoO9qowDgYDVR0PAQH/BAQD
+# ZWxzZW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCryQZWVzIoxaw1
+# CBZ60+rRUxjPexrE6p/BR5aiCIc7mT++6TK1vW6XzVDJk+rj8ktb/U09gOjV9XqT
+# PtzUg866VPPVKy00BH2R2v7E3mLzFN/ZN59wG/fcEScb9/S+D3W+meU8IoHJD39p
+# +6BaN2N+tt2sFmjHTfD1RI/k2LNeqRLE9V40JnsEkCismw+wPLr7j9t8+cpukhCq
+# rxIhABorK0FssNXrBn5nlcTmb73ObEnFHTUZj0sNjEDZy4+wMXpKWqJtO/cheHI3
+# w3UGIx+voCgLw0oZdnQ6zszNubrDMvu2U96gj91cJkmBofZS/KU4AFtxXRveNd6t
+# xEeYcwLBAgMBAAGjggHFMIIBwTAfBgNVHSMEGDAWgBRaxLl7KgqjpepxA8Bg+S32
+# ZXUOWDAdBgNVHQ4EFgQUjUBl7fObeeO9EfVXk/JZMnAo6JQwDgYDVR0PAQH/BAQD
 # AgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMDMHcGA1UdHwRwMG4wNaAzoDGGL2h0dHA6
 # Ly9jcmwzLmRpZ2ljZXJ0LmNvbS9zaGEyLWFzc3VyZWQtY3MtZzEuY3JsMDWgM6Ax
 # hi9odHRwOi8vY3JsNC5kaWdpY2VydC5jb20vc2hhMi1hc3N1cmVkLWNzLWcxLmNy
@@ -198,12 +207,12 @@
 # MCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5kaWdpY2VydC5jb20wTgYIKwYBBQUH
 # MAKGQmh0dHA6Ly9jYWNlcnRzLmRpZ2ljZXJ0LmNvbS9EaWdpQ2VydFNIQTJBc3N1
 # cmVkSURDb2RlU2lnbmluZ0NBLmNydDAMBgNVHRMBAf8EAjAAMA0GCSqGSIb3DQEB
-# CwUAA4IBAQDsfRHsWvsAZnRbk7FxBnkRWf67MyfyMrY00mAkg53qhasp75Fzs0Yb
-# NxTDJVHiC+W9Inm/uuDI+UgjqLEOSL7R4co/gtRHznn93HKna5NuQ+AJdGSKWVpX
-# owL4mKTMLu3DLS12gArnF/ozvbugzFb9EU5pspX1jxFU1UtX6rmIvRJCWi3q6FMJ
-# jRx5QmkIerq2jlZs1ZAgmJheMah5OO+CMC7UFtD6vY7Rq/swdv48dHXrSOE4ZF2G
-# cx8hccptp+v5+zPPBdEi1sVJ0GiE3ZHTcslfvC07VXsrR09wuTyF34xoazqubeWa
-# kVhqS28oio2n/hBTT/lWCE25CbXhm1/1MIIFMDCCBBigAwIBAgIQBAkYG1/Vu2Z1
+# CwUAA4IBAQAbL8QqsIr4wBx6lQWzj9f3GhGJHutcyJKOgSKa9jj33SBWJTA3qYlG
+# fXH1W6YG4nfI7yty/pLx2mRsZ9jr+r4eKTB639sWIq6c62Tmgw3zVeF7emJvtAQi
+# Iv20m2kGtPVXIrqFv7GRBq4qcs0dB+wdTcO5yX36Ph5n/bTDqXuppWKmDjlMUUfM
+# BMmipofZgQZxlHHDePxgCNwh8s7IpNV4pTsGAhJQ+o5qoOpbUsehmHi1H/HQll4K
+# obZglNKfOenydRZWq4zFKvfFAxRHqmggEgjybG6fPaTiidIzUqZwU++9TTkxlbg+
+# +JrN5TeFNAYjrGdQo88yM+J6nYyL+19GMIIFMDCCBBigAwIBAgIQBAkYG1/Vu2Z1
 # U0O1b5VQCDANBgkqhkiG9w0BAQsFADBlMQswCQYDVQQGEwJVUzEVMBMGA1UEChMM
 # RGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3d3cuZGlnaWNlcnQuY29tMSQwIgYDVQQD
 # ExtEaWdpQ2VydCBBc3N1cmVkIElEIFJvb3QgQ0EwHhcNMTMxMDIyMTIwMDAwWhcN
@@ -234,13 +243,13 @@
 # RDKyZqHnGKSaZFHvMYICKDCCAiQCAQEwgYYwcjELMAkGA1UEBhMCVVMxFTATBgNV
 # BAoTDERpZ2lDZXJ0IEluYzEZMBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTExMC8G
 # A1UEAxMoRGlnaUNlcnQgU0hBMiBBc3N1cmVkIElEIENvZGUgU2lnbmluZyBDQQIQ
-# DXS9akkSjo7r759FxeBS1zAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAig
+# DlKAkCblwyuuo05VV2HtmjAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAig
 # AoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgEL
-# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUGlQFC4H71WmgNUtNOrDH
-# TTGwsMcwDQYJKoZIhvcNAQEBBQAEggEAdYyASnVd3oWqVFGi6HpXj0MmRa53RGuK
-# PwyXAs4Ej9N6z81QrwHFcvpaLzG6K7qMLRMbNv/TnhLVwQq19KMkacCWZI7csgWS
-# yTXJTXBZOTBQegAMWNx7VaBCJl6kH+EkSPpWJPgDD9oyh9pOfToW92sSKeauGFSd
-# I78OCFdbSUwjG9wRknGKHajL0OVTG8aqeeCfTJ3ghhzWs7wbd4MhUB+steneYTAu
-# 0BT4I1TJjJz5Texe248IlxDC7d/tGmuDmTapuM3uFBQabsEzEf861igUeneOACaH
-# dMEjl7fdu3pEkiY0itLmwWOcDBbwcjx6qgbcJzmUx7zNyb5d6+94OA==
+# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUw4ErFqvg5BDsK+Cli5ol
+# zXNyXkowDQYJKoZIhvcNAQEBBQAEggEAfsFU4+X/pw+cGV7R1gm1v/cMqW/EoFBj
+# 7q5/rMp2C4JLodgDWQI/a0qY32XpxsgPKpxuHOPFb7T5vITKKSCcrf9QwS1NVF6z
+# h5ckQvZPE8nkaT+zAZMYrqb6S75GAQmbODoWJ6oqbWr740zTiVNxiy+HoMJOnjtT
+# UEo1X25CxanxXWPH3UWdBOTOMseqjDygpdVakCoJqbtqEPyECHc5ml/mugqb1jEF
+# 9KkDJAN9ymLp2KPwDv4BfyuJFbxeWkcqgWE05Hb0ivugxtfWoyEHFLXHwGGsRsBg
+# J3mhxBZ5+PXsj3sm0BQCpzlG4VtluNQN2T3OJRkklc80ezrA0XT7Zg==
 # SIG # End signature block
